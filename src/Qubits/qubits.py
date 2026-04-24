@@ -11,7 +11,8 @@ class Qubit(qo.BaseQuantumObject):
     
     def define(self, inp_state):
         if not isinstance(inp_state, torch.Tensor):
-            inp_state = torch.Tensor((inp_state)).reshape((1, self.num_states, 1))
+            inp_state = torch.tensor(inp_state)
+        inp_state = inp_state.reshape((1, self.num_states, 1))
         return super().__define__(inp_state)
     
 class Zero(qo.BaseQuantumObject):

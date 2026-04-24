@@ -11,7 +11,8 @@ class Gate(qo.BaseQuantumObject):
     
     def define(self, gate):
         if not isinstance(gate, torch.Tensor):
-            gate = torch.Tensor((gate)).reshape((1, self.num_states**self.size, -1))
+            gate = torch.tensor(gate)
+        gate = gate.reshape((1, self.num_states**self.size, -1))
         return super().__define__(gate)
 
 class H(qo.BaseQuantumObject):

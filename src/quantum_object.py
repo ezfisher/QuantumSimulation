@@ -9,6 +9,7 @@ class BaseQuantumObject(nn.Module):
     
     def __define__(self, inp_state):
         if not torch.is_complex(inp_state):
+            inp_state = inp_state.to(torch.float32)
             inp_state = torch.complex(inp_state, torch.zeros_like(inp_state))
         return self.__norm__(inp_state)
         
