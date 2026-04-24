@@ -1,5 +1,5 @@
 import torch
-import src.quantum_object as qo
+from .. import quantum_object as qo
 
 class Qubit(qo.BaseQuantumObject):
     def __init__(self, inp_state, num_states=2, adjoint=False, device = 'cpu'):

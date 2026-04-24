@@ -1,5 +1,5 @@
 import torch
-import src.quantum_object as qo
+from .. import quantum_object as qo
 
 class Gate(qo.BaseQuantumObject):
     def __init__(self, gate, size, device='cpu'):
