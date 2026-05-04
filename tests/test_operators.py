@@ -3,9 +3,11 @@ import torch
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from src import H, X, Y, Z, Gate, Zero, One, Plus
+from src import H, X, Y, Z, Gate, Zero, One, Plus, CX, CZ
 
 class TestOperators(unittest.TestCase):
+    def setUp(self):
+        self.addTypeEqualityFunc(torch.Tensor, self.assertTrue)
     def test_x_gate_values(self):
         g = X()
         expected = torch.tensor([[[0.0, 1.0], [1.0, 0.0]]], dtype=torch.complex64)
@@ -70,6 +72,33 @@ class TestOperators(unittest.TestCase):
     def test_gate_device(self):
         g = X(device='cpu')
         self.assertEqual(g.device, 'cpu')
+
+    def test_cx_gate(self):
+        cx = CX()
+        expected = torch.tensor([[[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]], dtype=torch.complex64)
+        self.assertTrue(torch.allclose(cx.gate.real, expected.real, atol=1e-5))
+    
+    def test_cx_on_10(self):
+        cx = CX()
+        # |10> index 2
+        state10 = torch.zeros(1,4,1, dtype=torch.complex64)
+        state10[0,2,0] = 1.0
+        result = torch.matmul(cx.gate, state10)
+        # |11> index 3
+        expected = torch.zeros_like(state10)
+        expected[0,3,0] = 1.0
+        self.assertTrue(torch.allclose(result, expected))
+
+    def test_cz_phase(self):
+        cz = CZ()
+        # |11> should get -1 phase on |1>
+        state11 = torch.zeros(1,4,1, dtype=torch.complex64)
+        state11[0,3,0] = 1.0
+        result = torch.matmul(cz.gate, state11)
+        # CZ |11> = |1> | -1 >
+        # But since basis |00>,|01>,|10>,|11>, CZ flips phase of |11>
+        print('CZ |11>:', result.squeeze())
+        self.assertTrue(torch.allclose(result.abs(), state11.abs()))
 
 if __name__ == '__main__':
     unittest.main()

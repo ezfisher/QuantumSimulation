@@ -181,12 +181,15 @@ class BaseQuantumCircuit(nn.Module):
         self.qubit_list.append(qubit)
         qubit.device = self.device  # Sync device
 
-    def add_gate(self, gate, target: int):
+    def add_gate(self, gate, target_qubits):
         if not isinstance(gate, BaseOperator):
             raise ValueError('Add BaseOperator instance')
-        if target >= len(self.qubit_list):
-            raise ValueError(f'Target {target} out of range')
-        self.gate_queue.append((gate, target))
+        if isinstance(target_qubits, int):
+            target_qubits = [target_qubits]
+        max_target = max(target_qubits)
+        if max_target >= len(self.qubit_list):
+            raise ValueError(f'Target qubits {target_qubits} out of range {len(self.qubit_list)}')
+        self.gate_queue.append((gate, target_qubits))
 
     def forward(self):
         if not self.qubit_list:
@@ -197,19 +200,31 @@ class BaseQuantumCircuit(nn.Module):
         state = torch.zeros(1, dim, 1, dtype=torch.complex64, device=self.device)
         state[0, 0, 0] = 1.0
         # Apply gates
-        for gate, target in self.gate_queue:
-            gate_full = self._expand_gate(gate.gate, target)
+        for gate, target_qubits in self.gate_queue:
+            gate_full = self._expand_gate(gate.gate, target_qubits)
             state = torch.matmul(gate_full, state)
         return state
 
-    def _expand_gate(self, gate, target):
+    def _expand_gate(self, gate, target_qubits):
+        """
+        Embed multi-qubit gate on target_qubits with I elsewhere.
+        gate.size == len(target_qubits)
+        """
+        n_qubits = len(self.qubit_list)
         full_gate = torch.eye(1, dtype=torch.complex64, device=self.device).unsqueeze(0)
-        for i in range(len(self.qubit_list)):
-            if i == target:
-                full_gate = tensor_product(full_gate, gate)
-            else:
-                i2 = torch.eye(2, dtype=torch.complex64, device=self.device).unsqueeze(0)
-                full_gate = tensor_product(full_gate, i2)
+        # Assume target_qubits sorted, consecutive for simplicity
+        start = min(target_qubits)
+        gate_qubits = len(target_qubits)
+        # Pre qubits I
+        for i in range(start):
+            i2 = torch.eye(2, dtype=torch.complex64, device=self.device).unsqueeze(0)
+            full_gate = tensor_product(full_gate, i2)
+        # Gate
+        full_gate = tensor_product(full_gate, gate)
+        # Post qubits I
+        for i in range(start + gate_qubits, n_qubits):
+            i2 = torch.eye(2, dtype=torch.complex64, device=self.device).unsqueeze(0)
+            full_gate = tensor_product(full_gate, i2)
         return full_gate
 
     def measure(self, num_shots=1):
