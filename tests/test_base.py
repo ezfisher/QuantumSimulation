@@ -2,10 +2,8 @@ import unittest
 import torch
 import sys
 import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
-from QuantumSimulation.src.quantum_object import BaseQuantumObject, BaseQubit, BaseOperator
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from src.quantum_object import BaseQuantumObject, BaseQubit, BaseOperator
 
 class TestBaseClasses(unittest.TestCase):
     def test_base_init(self):
@@ -41,4 +39,3 @@ class TestBaseClasses(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

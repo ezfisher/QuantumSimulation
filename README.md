@@ -7,7 +7,7 @@ A quantum computation simulator built on PyTorch's neural network structure with
 - `BaseQuantumObject` (nn.Module): Generic base.
 - `BaseQubit`: States with L2 normalization (pure states).
 - `BaseOperator`: Gates with unitary check (U U† = I), no L2 norm.
-- `BaseQuantumCircuit`: Placeholder for circuits.
+- `BaseQuantumCircuit`: Circuits with add_qubit/add_gate, forward (multi-qubit sim), measure.
 
 Predefined classes inherit accordingly.
 
@@ -64,7 +64,7 @@ Run `cd QuantumSimulation && python examples/basic_usage.py`
 
 ## Testing
 
-All 34 tests pass:
+All 38 tests pass (use `discover`):
 ```bash
 cd QuantumSimulation && python -m unittest discover tests -v
 ```
@@ -72,10 +72,9 @@ cd QuantumSimulation && python -m unittest discover tests -v
 
 ## Future Work
 
-- Implement BaseQuantumCircuit: add qubits/gates, forward simulation.
-- Multi-qubit tensor products.
-- Measurements.
-- GPU optimization.
+- Controlled gates (CNOT/CX).
+- GPU/multi-qubit opt.
 - Qudits.
+- Noise models.
 
 

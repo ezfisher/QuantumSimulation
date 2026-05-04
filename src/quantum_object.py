@@ -149,26 +149,76 @@ class BaseOperator(BaseQuantumObject):
             raise ValueError("Gate not set. Call set_gate() first.")
         return self._gate
 
-# Placeholder for QuantumCircuit
-class BaseQuantumCircuit(nn.Module):
-    '''
-    Placeholder for quantum circuit.
-    Future: list of qubits, gates, layers; forward() to apply sequence.
-    '''
-    def __init__(self):
-        super().__init__()
-        # qubits: list[BaseQubit]
-        # gates: list[BaseOperator]
-        # circuit_layers: list
-        pass
+def tensor_product(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    """
+    Tensor (Kronecker) product for states or gates.
+    a, b: [batch, dim, ...]
+    Handles states [1, d, 1] x [1, d2, 1] -> [1, d1*d2, 1]
+    Gates [1, d1, d1] x [1, d2, d2] -> [1, d1*d2, d1*d2]
+    """
+    batch_a = a.shape[0]
+    batch_b = b.shape[0]
+    if a.shape[-1] == 1 and b.shape[-1] == 1:  # States
+        kron = torch.kron(a.squeeze(-1), b.squeeze(-1))
+        return kron.view(batch_a * batch_b, -1, 1)
+    else:  # Gates
+        return torch.kron(a, b)
 
-    def forward(self, input_state):
-        raise NotImplementedError("Circuit simulation to be implemented.")
+class BaseQuantumCircuit(nn.Module):
+    """
+    Quantum circuit: add qubits/gates, forward simulates on |00..>.
+    Supports single-qubit gates embedded with identities.
+    """
+    def __init__(self, device: str = 'cpu'):
+        super().__init__()
+        self.device = device
+        self.qubit_list = []
+        self.gate_queue = []  # (gate, target)
 
     def add_qubit(self, qubit):
-        pass
+        if not isinstance(qubit, BaseQubit):
+            raise ValueError('Add BaseQubit instance')
+        self.qubit_list.append(qubit)
+        qubit.device = self.device  # Sync device
 
-    def add_gate(self, gate, target):
-        pass
+    def add_gate(self, gate, target: int):
+        if not isinstance(gate, BaseOperator):
+            raise ValueError('Add BaseOperator instance')
+        if target >= len(self.qubit_list):
+            raise ValueError(f'Target {target} out of range')
+        self.gate_queue.append((gate, target))
+
+    def forward(self):
+        if not self.qubit_list:
+            return torch.empty(0)
+        # Init |0>
+        n_qubits = len(self.qubit_list)
+        dim = 1 << n_qubits  # 2**n
+        state = torch.zeros(1, dim, 1, dtype=torch.complex64, device=self.device)
+        state[0, 0, 0] = 1.0
+        # Apply gates
+        for gate, target in self.gate_queue:
+            gate_full = self._expand_gate(gate.gate, target)
+            state = torch.matmul(gate_full, state)
+        return state
+
+    def _expand_gate(self, gate, target):
+        full_gate = torch.eye(1, dtype=torch.complex64, device=self.device).unsqueeze(0)
+        for i in range(len(self.qubit_list)):
+            if i == target:
+                full_gate = tensor_product(full_gate, gate)
+            else:
+                i2 = torch.eye(2, dtype=torch.complex64, device=self.device).unsqueeze(0)
+                full_gate = tensor_product(full_gate, i2)
+        return full_gate
+
+    def measure(self, num_shots=1):
+        state = self.forward()
+        probs = torch.real(state * torch.conj(state)).squeeze()
+        probs /= probs.sum()
+        outcome = torch.multinomial(probs, num_shots, replacement=True)[0].item()
+        collapsed = torch.zeros_like(state)
+        collapsed[0, outcome, 0] = 1.0
+        return outcome, probs, collapsed
 
 
