@@ -1,66 +1,63 @@
 import torch
-from .. import quantum_object as qo
+import numpy as np
+from ..quantum_object import BaseOperator
 
-class Gate(qo.BaseQuantumObject):
-    def __init__(self, gate, size, device='cpu'):
-        super().__init__(size=1, num_states=2, device=device)
-        self.num_states = 2
-        self.size = size
-        self.device = device
-        self.gate = self.define(gate)
-    
-    def define(self, gate):
-        if not isinstance(gate, torch.Tensor):
-            gate = torch.tensor(gate)
-        gate = gate.reshape((1, self.num_states**self.size, -1))
-        return super().__define__(gate)
+inv_sqrt2 = 1 / np.sqrt(2)
 
-class H(qo.BaseQuantumObject):
-    def __init__(self, device='cpu'):
-        super().__init__(size=1, num_states=2, device=device)
-        self.num_states = 2
-        self.size = 1
-        self.device = device
-        self.gate = self.define()
-    
-    def define(self):
-        gate = torch.Tensor(((1, 1), (1, -1))).reshape((1, 2, 2))
-        return super().__define__(gate)
+class Gate(BaseOperator):
+    '''
+    Custom quantum gate/operator.
+    '''
+    def __init__(self, gate_inp, size: int = 1, device: str = 'cpu'):
+        super().__init__(size=size, num_states=2, device=device)
+        self.set_gate(gate_inp)
 
-class Y(qo.BaseQuantumObject):
-    def __init__(self, device='cpu'):
+class H(BaseOperator):
+    '''
+    Hadamard gate.
+    '''
+    def __init__(self, device: str = 'cpu'):
         super().__init__(size=1, num_states=2, device=device)
-        self.num_states = 2
-        self.size = 1
-        self.device = device
-        self.gate = self.define()
-    
-    def define(self):
-        gate_re = torch.Tensor(((0, 0), (0, 0))).reshape((1, 2, 2))
-        gate_im = torch.Tensor(((0, -1), (1, 0))).reshape((1, 2, 2))
-        gate = torch.complex(gate_re, gate_im)
-        return super().__define__(gate)
+        h_matrix = torch.tensor([
+            [inv_sqrt2, inv_sqrt2],
+            [inv_sqrt2, -inv_sqrt2]
+        ], dtype=torch.complex64)
+        self.set_gate(h_matrix)
 
-class X(qo.BaseQuantumObject):
-    def __init__(self, device='cpu'):
+class X(BaseOperator):
+    '''
+    Pauli-X gate.
+    '''
+    def __init__(self, device: str = 'cpu'):
         super().__init__(size=1, num_states=2, device=device)
-        self.num_states = 2
-        self.size = 1
-        self.device = device
-        self.gate = self.define()
-    
-    def define(self):
-        gate = torch.Tensor(((0, 1), (1, 0))).reshape((1, 2, 2))
-        return super().__define__(gate)
+        x_matrix = torch.tensor([
+            [0, 1],
+            [1, 0]
+        ], dtype=torch.complex64)
+        self.set_gate(x_matrix)
 
-class Z(qo.BaseQuantumObject):
-    def __init__(self, device='cpu'):
+class Y(BaseOperator):
+    '''
+    Pauli-Y gate.
+    '''
+    def __init__(self, device: str = 'cpu'):
         super().__init__(size=1, num_states=2, device=device)
-        self.num_states = 2
-        self.size = 1
-        self.device = device
-        self.gate = self.define()
-    
-    def define(self):
-        gate = torch.Tensor(((1, 0), (0, -1))).reshape((1, 2, 2))
-        return super().__define__(gate)
+        y_matrix = torch.tensor([
+            [0, -1j],
+            [1j, 0]
+        ], dtype=torch.complex64)
+        self.set_gate(y_matrix)
+
+class Z(BaseOperator):
+    '''
+    Pauli-Z gate.
+    '''
+    def __init__(self, device: str = 'cpu'):
+        super().__init__(size=1, num_states=2, device=device)
+        z_matrix = torch.tensor([
+            [1, 0],
+            [0, -1]
+        ], dtype=torch.complex64)
+        self.set_gate(z_matrix)
+
+

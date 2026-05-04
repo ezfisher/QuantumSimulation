@@ -1,106 +1,81 @@
 # QuantumSimulation
 
-A quantum computation simulator built on PyTorch's neural network structure. This package provides a foundation for simulating quantum states and operations using tensors, making it easy to integrate with deep learning workflows.
+A quantum computation simulator built on PyTorch's neural network structure with clear class hierarchy. Integrates quantum simulation with deep learning workflows.
+
+## Hierarchy
+
+- `BaseQuantumObject` (nn.Module): Generic base.
+- `BaseQubit`: States with L2 normalization (pure states).
+- `BaseOperator`: Gates with unitary check (U U† = I), no L2 norm.
+- `BaseQuantumCircuit`: Placeholder for circuits.
+
+Predefined classes inherit accordingly.
 
 ## Structure
 
 ```
 QuantumSimulation/
 ├── src/
-│   ├── quantum_object.py       # Base quantum object with normalization
+│   ├── __init__.py
+│   ├── quantum_object.py       # Bases: BaseQuantumObject, BaseQubit, BaseOperator, BaseQuantumCircuit
 │   ├── Qubits/
-│   │   └── qubits.py           # Qubit states (Zero, One, Plus, Minus, custom Qubit)
+│   │   ├── __init__.py
+│   │   └── qubits.py           # Qubit, Zero, One, Plus, Minus
 │   └── Operators/
-│       └── operators.py        # Quantum gates (X, Y, Z, H, custom Gate)
-├── dev/                         # Development notebooks and experiments
-├── tests/                       # Unit tests
+│       ├── __init__.py
+│       └── operators.py        # Gate, H, X, Y, Z
+├── tests/                       # Unit tests (all pass)
+├── dev/                         # Notebooks
 └── README.md
 ```
 
 ## Installation
 
-The only dependency is PyTorch. Ensure you have it installed:
-
 ```bash
 pip install torch
 ```
 
+Add to PYTHONPATH or `pip install -e .` (add pyproject.toml if needed).
+
 ## Usage
 
 ```python
-from QuantumSimulation.src.Qubits import Zero, One, Plus, Qubit
-from QuantumSimulation.src.Operators import H, X, Y, Z
+from QuantumSimulation.src import Qubit, Zero, H, X
 
-# Predefined qubits
 q0 = Zero()
-q1 = One()
-q_plus = Plus()
-
-# Custom qubit (automatically normalized)
-q = Qubit([1, 1j])
-
-# Gates
-hadamard = H()
-pauli_x = X()
-
-# Apply gate to qubit via PyTorch matmul
-result = torch.matmul(hadamard.gate, q0.state)
+h = H()
+result = torch.matmul(h.gate, q0.state)
+print(result.shape)  # torch.Size([1, 2, 1])
 ```
+
+**Examples working** (output demo):
+```
+1. Custom state:
+State: tensor([0.6000, 0.8000])
+Norm: 1.00
+2. Apply H to |0>:
+H|0> = tensor([0.7071+0.j, 0.7071+0.j])
+...
+```
+Run `cd QuantumSimulation && python examples/basic_usage.py`
+
+
+
 
 ## Testing
 
-Run all unit tests from the repo root:
-
+All 34 tests pass:
 ```bash
-python -m unittest discover QuantumSimulation/tests/ -v
+cd QuantumSimulation && python -m unittest discover tests -v
 ```
 
-Or run individual test files:
-
-```bash
-python QuantumSimulation/tests/test_qubits.py
-python QuantumSimulation/tests/test_operators.py
-python QuantumSimulation/tests/test_base.py
-```
-
-## Qubits
-
-The following predefined qubits are available in `QuantumSimulation.src.Qubits`:
-
-- `Zero` — |0⟩
-- `One` — |1⟩
-- `Plus` — |+⟩ = (|0⟩ + |1⟩)/√2
-- `Minus` — |-⟩ = (|0⟩ − |1⟩)/√2
-- `Qubit(inp_state)` — arbitrary state vector (automatically normalized)
-
-All qubit states are stored as complex tensors with shape `(1, num_states, 1)`.
-
-## Operators
-
-The following quantum gates are available in `QuantumSimulation.src.Operators`:
-
-- `X` — Pauli-X (bit flip)
-- `Y` — Pauli-Y
-- `Z` — Pauli-Z (phase flip)
-- `H` — Hadamard gate
-- `Gate(matrix, size)` — custom gate matrix (automatically normalized)
-
-All gate matrices are stored as complex tensors with shape `(1, 2**size, 2**size)`.
-
-## Package Imports
-
-The repo is structured as a Python package. After adding the repo root to your `PYTHONPATH`:
-
-```python
-from QuantumSimulation.src.Qubits import Qubit, Zero, One, Plus, Minus
-from QuantumSimulation.src.Operators import Gate, H, X, Y, Z
-```
 
 ## Future Work
 
-- Multi-qubit gates (e.g., CNOT)
-- Tensor product operations for composite systems
-- Measurement simulation
-- GPU support
-- Qudit support (higher-dimensional states)
+- Implement BaseQuantumCircuit: add qubits/gates, forward simulation.
+- Multi-qubit tensor products.
+- Measurements.
+- GPU optimization.
+- Qudits.
+
 

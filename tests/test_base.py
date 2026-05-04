@@ -5,50 +5,39 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from QuantumSimulation.src.quantum_object import BaseQuantumObject
+from QuantumSimulation.src.quantum_object import BaseQuantumObject, BaseQubit, BaseOperator
 
-
-class TestBaseQuantumObject(unittest.TestCase):
-    def test_init(self):
+class TestBaseClasses(unittest.TestCase):
+    def test_base_init(self):
         obj = BaseQuantumObject(size=2, num_states=4, device='cpu')
         self.assertEqual(obj.size, 2)
         self.assertEqual(obj.num_states, 4)
         self.assertEqual(obj.device, 'cpu')
 
-    def test_define_converts_real_to_complex(self):
-        obj = BaseQuantumObject(size=1, num_states=2, device='cpu')
-        real_tensor = torch.tensor([[[1.0], [0.0]]])
-        result = obj.__define__(real_tensor)
-        self.assertTrue(torch.is_complex(result))
+    def test_qubit_set_state_list(self):
+        qb = BaseQubit(size=1, num_states=2)
+        qb.set_state([3, 4])
+        expected_norm = torch.tensor([0.6, 0.8], dtype=torch.float32)
+        self.assertTrue(torch.allclose(qb.state.squeeze().real, expected_norm))
 
-    def test_define_normalizes(self):
-        obj = BaseQuantumObject(size=1, num_states=2, device='cpu')
-        real_tensor = torch.tensor([[[3.0], [4.0]]])
-        result = obj.__define__(real_tensor)
-        norm = torch.sqrt((result * result.conj()).sum().real)
-        self.assertTrue(torch.allclose(norm, torch.tensor(1.0)))
+    def test_qubit_set_state_tensor(self):
+        qb = BaseQubit(size=1, num_states=2)
+        qb.set_state(torch.tensor([1j, 0]))
+        self.assertTrue(torch.allclose(qb.state, torch.tensor([[[1j], [0]]])))
 
-    def test_norm_real(self):
-        obj = BaseQuantumObject(size=1, num_states=2, device='cpu')
-        real_tensor = torch.tensor([[[3.0], [4.0]]])
-        result = obj.__norm__(real_tensor)
-        expected = torch.tensor([[[0.6], [0.8]]])
-        self.assertTrue(torch.allclose(result, expected))
+    def test_operator_set_gate(self):
+        op = BaseOperator(size=1, num_states=2)
+        op.set_gate([[0,1],[1,0]])
+        expected = torch.tensor([[[0,1],[1,0]]], dtype=torch.complex64)
+        self.assertTrue(torch.allclose(op.gate, expected))
 
-    def test_norm_complex(self):
-        obj = BaseQuantumObject(size=1, num_states=2, device='cpu')
-        complex_tensor = torch.tensor([[[1.0j], [0.0]]])
-        result = obj.__norm__(complex_tensor)
-        expected = torch.tensor([[[1.0j], [0.0]]])
-        self.assertTrue(torch.allclose(result, expected))
-
-    def test_norm_leaves_zero_untouched(self):
-        obj = BaseQuantumObject(size=1, num_states=2, device='cpu')
-        zero_tensor = torch.tensor([[[0.0], [0.0]]])
-        result = obj.__norm__(zero_tensor)
-        # Division by zero produces NaN; test that we get NaN as expected
-        self.assertTrue(torch.isnan(result).all())
-
+    def test_shapes(self):
+        qb = BaseQubit(1,2)
+        qb.set_state([1,0])
+        self.assertEqual(qb.state.shape, (1,2,1))
+        op = BaseOperator(1,2)
+        op.set_gate([[1,0],[0,1]])
+        self.assertEqual(op.gate.shape, (1,2,2))
 
 if __name__ == '__main__':
     unittest.main()

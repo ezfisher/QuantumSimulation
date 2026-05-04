@@ -57,8 +57,9 @@ class TestOperators(unittest.TestCase):
 
     def test_custom_gate_unnormalized(self):
         g = Gate([[2, 0], [0, 2]], size=1)
-        expected = torch.tensor([[[1.0, 0.0], [0.0, 1.0]]], dtype=torch.complex64)
+        expected = torch.tensor([[[2.0, 0.0], [0.0, 2.0]]], dtype=torch.complex64)
         self.assertTrue(torch.allclose(g.gate, expected))
+
 
     def test_custom_gate_shape(self):
         g = Gate([[1, 0], [0, 1]], size=1)

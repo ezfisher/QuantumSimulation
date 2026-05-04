@@ -79,6 +79,25 @@ class TestQubits(unittest.TestCase):
         self.assertEqual(q.device, 'cpu')
 
 
+    def test_measure_zero(self):
+        z = Zero()
+        outcome, probs, collapsed = z.measure()
+        self.assertEqual(outcome, 0)
+        self.assertTrue(torch.allclose(probs, torch.tensor([1.0, 0.0])))
+
+    def test_measure_plus(self):
+        p = Plus()
+        outcome, probs, collapsed = p.measure()
+        self.assertTrue(torch.allclose(probs, torch.tensor([0.5, 0.5])))
+        self.assertIn(collapsed.squeeze().abs().max(), [1.0, 1.0])  # |0> or |1>
+
+    def test_measure_hadamard_basis(self):
+        p = Plus()
+        basis = [Zero(), One()]
+        outcome, probs, collapsed = p.measure(basis=basis)
+        self.assertTrue(torch.allclose(probs, torch.tensor([0.5, 0.5])))
+
 if __name__ == '__main__':
     unittest.main()
+
 
