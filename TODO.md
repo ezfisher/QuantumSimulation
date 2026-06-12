@@ -1,21 +1,12 @@
-# QuantumSimulation Circuit Implementation TODO
+# QuantumSimulation TODO
 
-## Completed ✅
-1. Added .gitignore ignoring dev/ folder.
-2. Created tests/test_circuit.py with circuit tests.
-3. Implemented BaseQuantumCircuit + tensor_product in src/quantum_object.py.
-4. Exported tensor_product, BaseQuantumCircuit in src/__init__.py.
-5. Fixed test imports.
+## Performance refactor (dense state, faster gate application)
+- [x] Add fast helpers in `src/quantum_object.py` to apply single-qubit gates without building embedded Kronecker matrices.
+- [x] Add fast helper to apply controlled 2-qubit gates (control/target convention) directly on the state vector.
 
-## Completed ✅
-1. Added .gitignore ignoring dev/ folder.
-2. Created tests/test_circuit.py with circuit tests.
-3. Implemented BaseQuantumCircuit + tensor_product in src/quantum_object.py.
-4. Exported tensor_product, BaseQuantumCircuit in src/__init__.py.
-5. Fixed test imports and circuit logic (tensor dims, init, expand_gate).
 
-## Complete ✅
-- Circuit implemented, tests/docs updated (38 tests OK).
-Next: Controlled gates, GPU.
+- [ ] Update `BaseQuantumCircuit.forward()` to dispatch to fast paths for single-qubit + supported controlled gates; keep fallback to existing `_expand_gate()`.
+- [ ] Add/adjust unit tests to ensure correctness for the fast paths (especially CX / Bell state).
+- [ ] Run full unittest suite.
 
-Progress updated after each step.
+
