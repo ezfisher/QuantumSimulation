@@ -1,6 +1,9 @@
 import torch
 from torch import nn
 
+from .controlled_fast import apply_controlled_unitary_to_state
+
+
 class BaseQuantumObject(nn.Module):
     '''
     Generic base class for quantum objects (states and operators).
@@ -96,6 +99,7 @@ class BaseQubit(BaseQuantumObject):
         return outcome, probs, collapsed.to(self.device)
 
 class BaseOperator(BaseQuantumObject):
+
     '''
     Base class for quantum operators/gates. No normalization (unitary preserved).
     Shape: [batch, dim, dim] where dim = num_states ** size
@@ -164,6 +168,39 @@ def tensor_product(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     else:  # Gates
         return torch.kron(a, b)
 
+
+def apply_single_qubit_gate_to_state(state: torch.Tensor, gate: torch.Tensor, n_qubits: int, target: int) -> torch.Tensor:
+    """Apply a single-qubit 2x2 gate to `target` qubit without building the embedded full matrix.
+
+    Parameters
+
+    ----------
+    state: complex tensor of shape [1, 2**n_qubits, 1]
+    gate: complex tensor of shape [1, 2, 2] or [2, 2]
+    """
+    if state.dim() != 3 or state.shape[-1] != 1:
+        raise ValueError(f"Expected state shape [1, 2**n, 1], got {tuple(state.shape)}")
+    if target < 0 or target >= n_qubits:
+        raise ValueError(f"target qubit out of range: {target} for n_qubits={n_qubits}")
+
+    g = gate
+    if g.dim() == 3:
+        g = g.squeeze(0)  # [2,2]
+    # Reshape state to [2]*n with ordering matching the circuit's basis indexing.
+    # Current basis ordering is big-endian with qubit 0 being the most significant bit.
+    psi = state.view(*([2] * n_qubits))  # [2]*n
+
+    # To apply gate on qubit `target` (big-endian): move target axis to the last axis,
+    # apply on that axis, then move it back.
+    psi_perm = psi.movedim(target, -1)  # [..., 2]
+    psi_flat = psi_perm.reshape(-1, 2).transpose(0, 1)  # [2, -1]
+    out_flat = torch.matmul(g, psi_flat)  # [2, -1]
+    out_perm = out_flat.transpose(0, 1).reshape(*psi_perm.shape)  # [..., 2]
+    out = out_perm.movedim(-1, target)
+    return out.reshape(1, 1 << n_qubits, 1)
+
+
+
 class BaseQuantumCircuit(nn.Module):
     """
     Quantum circuit: add qubits/gates, forward simulates on |00..>.
@@ -200,10 +237,38 @@ class BaseQuantumCircuit(nn.Module):
         state = torch.zeros(1, dim, 1, dtype=torch.complex64, device=self.device)
         state[0, 0, 0] = 1.0
         # Apply gates
+        n_qubits = len(self.qubit_list)
         for gate, target_qubits in self.gate_queue:
+            # Fast path: single-qubit gate embedding (avoid kron expansion)
+            if gate.size == 1:
+                t = target_qubits[0] if isinstance(target_qubits, (list, tuple)) else int(target_qubits)
+                state = apply_single_qubit_gate_to_state(state, gate.gate, n_qubits, t)
+
+                continue
+
+            # Fast path: controlled single-qubit unitary embedded in a 2-qubit gate.
+            # Current library constructs Controlled-U as a 4x4 operator from U.
+            # We can apply it directly by only updating the target amplitudes where control=1.
+            if gate.size == 2 and isinstance(target_qubits, (list, tuple)) and len(target_qubits) == 2:
+                control_q, target_q = target_qubits
+
+                # Controlled gate stores the underlying single-qubit operator as `gate.U`.
+                if hasattr(gate, 'U'):
+                    state = apply_controlled_unitary_to_state(state, gate.U.gate, n_qubits, control_q, target_q)
+                    continue
+
+                # Fallback if we don't know the underlying U.
+                gate_full = self._expand_gate(gate.gate, target_qubits)
+                state = torch.matmul(gate_full, state)
+                continue
+
+
+            # Fallback: generic embedding
             gate_full = self._expand_gate(gate.gate, target_qubits)
             state = torch.matmul(gate_full, state)
+
         return state
+
 
     def _expand_gate(self, gate, target_qubits):
         """
