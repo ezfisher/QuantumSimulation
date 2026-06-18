@@ -247,25 +247,28 @@ class BaseQuantumCircuit(nn.Module):
                 continue
 
             # Fast path: controlled single-qubit unitary embedded in a 2-qubit gate.
-            # Current library constructs Controlled-U as a 4x4 operator from U.
-            # We can apply it directly by only updating the target amplitudes where control=1.
+            # Controlled gates in this repo are constructed as |0><0|⊗I + |1><1|⊗U
+            # and stored as a 4x4 matrix in `gate.gate`, while the underlying U is
+            # also available as `gate.U`.
             if gate.size == 2 and isinstance(target_qubits, (list, tuple)) and len(target_qubits) == 2:
                 control_q, target_q = target_qubits
 
                 # Controlled gate stores the underlying single-qubit operator as `gate.U`.
                 if hasattr(gate, 'U'):
-                    state = apply_controlled_unitary_to_state(state, gate.U.gate, n_qubits, control_q, target_q)
+                    state = apply_controlled_unitary_to_state(
+                        state,
+                        gate.U.gate,
+                        n_qubits,
+                        control_q,
+                        target_q,
+                    )
                     continue
-
-                # Fallback if we don't know the underlying U.
-                gate_full = self._expand_gate(gate.gate, target_qubits)
-                state = torch.matmul(gate_full, state)
-                continue
-
 
             # Fallback: generic embedding
             gate_full = self._expand_gate(gate.gate, target_qubits)
             state = torch.matmul(gate_full, state)
+
+
 
         return state
 
