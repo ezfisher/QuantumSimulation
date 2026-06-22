@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src import Qubit, Zero, One, H
+from src import Qubit, Zero, One, H, CX
 import torch
 
 
@@ -42,4 +42,16 @@ z = Zero()
 basis_h = [Qubit([1,1]), Qubit([1,-1])]  # |+>, |->
 outcome_h, probs_h, collapsed_h = z.measure(basis=basis_h)
 print(f"H-basis on |0>: outcome={outcome_h}, probs={probs_h}")
+
+print("\n6. Bell state (H[0] CX[0,1]):")
+from src import BaseQuantumCircuit
+bell = BaseQuantumCircuit()
+bell.add_qubit(Zero())
+bell.add_qubit(Zero())
+bell.add_gate(H(), [0])
+bell.add_gate(CX(), [0, 1])
+bell_state = bell.forward()
+bell_probs = torch.real(bell_state * bell_state.conj()).squeeze()
+print(f"Bell state probs: {bell_probs.tolist()}")
+print(f"Expected: [0.5, 0.0, 0.0, 0.5]")
 
