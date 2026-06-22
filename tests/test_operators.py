@@ -1,9 +1,12 @@
 import unittest
 import torch
+import numpy as np
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from src import H, X, Y, Z, Gate, Zero, One, Plus, CX, CZ
+from src import H, X, Y, Z, Gate, Zero, One, Plus, CX, CH, CY, CZ
+
+inv_sqrt2 = 1 / np.sqrt(2)
 
 class TestOperators(unittest.TestCase):
     def setUp(self):
@@ -99,6 +102,39 @@ class TestOperators(unittest.TestCase):
         # But since basis |00>,|01>,|10>,|11>, CZ flips phase of |11>
         print('CZ |11>:', result.squeeze())
         self.assertTrue(torch.allclose(result.abs(), state11.abs()))
+
+    def test_ch_gate_values(self):
+        ch = CH()
+        expected = torch.tensor([[[1,0,0,0],[0,1,0,0],[0,0,inv_sqrt2,inv_sqrt2],[0,0,inv_sqrt2,-inv_sqrt2]]], dtype=torch.complex64)
+        self.assertTrue(torch.allclose(ch.gate, expected, atol=1e-5))
+
+    def test_cy_gate_values(self):
+        cy = CY()
+        expected = torch.tensor([[[1,0,0,0],[0,1,0,0],[0,0,0,-1j],[0,0,1j,0]]], dtype=torch.complex64)
+        self.assertTrue(torch.allclose(cy.gate, expected, atol=1e-5))
+
+    def test_ch_on_superposition(self):
+        ch = CH()
+        # |+1> = (|10> + |11>)/sqrt(2)
+        state = torch.zeros(1,4,1, dtype=torch.complex64)
+        state[0,2,0] = inv_sqrt2
+        state[0,3,0] = inv_sqrt2
+        result = torch.matmul(ch.gate, state)
+        # CH|+1> = |1>|+>
+        expected = torch.zeros_like(state)
+        expected[0,2,0] = 0.5
+        expected[0,3,0] = 0.5
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
+
+    def test_cy_on_11(self):
+        cy = CY()
+        state11 = torch.zeros(1,4,1, dtype=torch.complex64)
+        state11[0,3,0] = 1.0
+        result = torch.matmul(cy.gate, state11)
+        # CY|11> = -i|10> (checking phase and amplitude)
+        expected = torch.zeros_like(state11)
+        expected[0,2,0] = -1j
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
 
 if __name__ == '__main__':
     unittest.main()
